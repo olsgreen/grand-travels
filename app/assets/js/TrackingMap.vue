@@ -49,7 +49,9 @@
     import axios from 'axios'
     import 'leaflet/dist/leaflet.css'
     import { map, tileLayer, marker, icon } from 'leaflet'
-    let myMap;
+    let myMap
+    let watcher
+    let mapMarker
 
     export default {
         data() {
@@ -59,31 +61,7 @@
             }
         },
         created() {
-            axios.get('/data/current').then(r => {
-                this.currentDatapoint = r.data
-
-                myMap.setView([
-                    this.currentDatapoint.latitude, 
-                    this.currentDatapoint.longitude
-                ], 7)
-
-                let markerIcon = icon({
-                    iconUrl: '/static/icon.png',
-                    //iconSize: [128, 128],
-                    //iconAnchor: [20, 90],
-                    iconSize: [64, 64],
-                    iconAnchor: [10, 45],
-                    popupAnchor: [-3, -76],
-                    //shadowUrl: 'my-icon-shadow.png',
-                    //shadowSize: [68, 95],
-                    //shadowAnchor: [22, 94]
-                })
-
-                marker([
-                    this.currentDatapoint.latitude, 
-                    this.currentDatapoint.longitude
-                ], { icon: markerIcon }).addTo(myMap);
-            })
+            this.watchPosition()
         },
         mounted() {
             myMap = map('mymap')
@@ -95,6 +73,51 @@
                 zoomOffset: -1,
                 accessToken: 'pk.eyJ1IjoiZ3JlZW4yZ28iLCJhIjoiY2tkZXkzZG4zMm0ycDJ3c2NvcXN6Mm5wOCJ9.dZTIjRsPq7u-1g4f3Dtnkg'
             }).addTo(myMap);
+        },
+        methods: {
+            watchPosition() {
+                clearInterval(watcher)
+                this.updatePosition().then(() => {
+                    myMap.setView([
+                        this.currentDatapoint.latitude, 
+                        this.currentDatapoint.longitude
+                    ], 14)
+                })
+                watcher = setInterval(this.updatePosition, 10000)
+            },
+            updatePosition() {
+                return new Promise((resolve, reject) => {
+                    axios.get('/data/current').then(r => {
+                        this.currentDatapoint = r.data
+
+                        if (!mapMarker) {
+                            let markerIcon = icon({
+                                iconUrl: '/static/icon.png',
+                                //iconSize: [128, 128],
+                                //iconAnchor: [20, 90],
+                                iconSize: [64, 64],
+                                iconAnchor: [10, 45],
+                                popupAnchor: [-3, -76],
+                                //shadowUrl: 'my-icon-shadow.png',
+                                //shadowSize: [68, 95],
+                                //shadowAnchor: [22, 94]
+                            })
+
+                            mapMarker = marker([
+                                this.currentDatapoint.latitude, 
+                                this.currentDatapoint.longitude
+                            ], { icon: markerIcon }).addTo(myMap);
+                        }
+
+                        mapMarker.setLatLng([
+                            this.currentDatapoint.latitude, 
+                            this.currentDatapoint.longitude
+                        ])
+
+                        resolve()
+                    }).catch(reject)
+                })
+            }
         }
     }
 </script>
