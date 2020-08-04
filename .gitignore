@@ -1,0 +1,10 @@
+.DS_Store
+__pycache__
+/build
+/database
+/app/dist
+/env
+/node_modules
+*.egg-info
+/app/static/*
+!.gitkeep

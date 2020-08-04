@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Leti & Oli’s Grand Travels</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}" />
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon256x256.png') }}" sizes="256x256">
+    <link rel="icon" href="{{ url_for('static', filename='icon256x256.png') }}" sizes="256x256" type="image/png">
+    <link rel="icon" href="{{ url_for('static', filename='icon32x32.png') }}" sizes="32x32" type="image/png">
+</head>
+<body>
+    <div id="app">
+        <tracking-map />
+    </div>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
