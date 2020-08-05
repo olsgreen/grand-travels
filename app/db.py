@@ -41,6 +41,13 @@ def get_last_datapoint():
     cur.close()
     return rv[0] if rv else None
 
+def get_datapoints_since(past_date):
+    db = get_db()
+    cur = db.execute("SELECT * FROM gps_data WHERE created_at >= ? ORDER BY id ASC", (past_date,))
+    rv = cur.fetchall()
+    cur.close()
+    return rv if rv else None
+
 def close_connection(exception):
     db = getattr(g, '_database', None)
     if db is not None:

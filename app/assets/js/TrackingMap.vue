@@ -2,18 +2,30 @@
     <div id="container">
         <div id="mymap"></div>
         <img src="/static/us.png" id="logo">
-        <div id="details" v-if="showHeading || showSpeed">
-            <template v-if="showHeading">
-                <small>Heading</small>
-                <div>{{ direction }}</div>
-                <small class="text-white">{{ currentDatapoint.heading }}°</small>
-            </template>
-            <hr v-if="showHeading && showSpeed">
-            <template v-if="showSpeed">
+        <div id="details">
+                <small>Status</small>
+                <div v-if="isParked">Parked</div>
+                <div v-else>Driving</div>
+                <hr>
                 <small>Speed</small>
-                <div>{{ currentDatapoint.ground_speed }}</div>
-                <small class="text-white">km/h</small>
-            </template>
+                <template v-if="!isParked">
+                    <div>{{ currentDatapoint.ground_speed }}</div>
+                    <small class="text-white">km/h</small>
+                </template>
+                <template v-else>
+                    <div>--</div>
+                    <small class="text-white">km/h</small>
+                </template>
+                <hr>
+                <small>Heading</small>
+                <template v-if="!isParked">
+                    <div>{{ direction }}</div>
+                    <small class="text-white">{{ currentDatapoint.heading }}°</small>
+                </template>
+                <template v-else>
+                    <div>---</div>
+                    <small class="text-white">-</small>
+                </template>
         </div>
     </div>
 </template>
@@ -109,14 +121,16 @@
         data() {
             return {
                 datapoints: [],
-                currentDatapoint: null
             }
         },
         created() {
             this.watchPosition()
         },
         mounted() {
-            myMap = map('mymap')
+            myMap = map('mymap', {
+                center: [51.505, -0.09],
+                zoom: 10
+            })
 
             tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
                 attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
@@ -131,35 +145,70 @@
             watchPosition() {
                 clearInterval(watcher)
                 this.updatePosition().then(() => {
-                    myMap.setView([
-                        this.currentDatapoint.latitude, 
-                        this.currentDatapoint.longitude
-                    ], 14)
+                    if (this.isParked) {
+                        axios.get('/data/current').then(r => {
+                            let latLng = [
+                                r.data.latitude,    
+                                r.data.longitude
+                            ]
+
+                            this.setMapMarker(latLng)
+                            this.flyTo(latLng)
+                        })
+                    } else {
+                        this.flyTo([
+                            this.currentDatapoint.latitude,
+                            this.currentDatapoint.longitude
+                        ])
+                    }
                 })
-                watcher = setInterval(this.updatePosition, 10000)
+                watcher = setInterval(this.updatePosition, 5000)
             },
             updatePosition() {
                 return new Promise((resolve, reject) => {
-                    axios.get('/data/current').then(r => {
-                        this.currentDatapoint = r.data
+                    axios.get('/data/last_five_minutes').then(r => {
+                        this.datapoints = r.data
 
-                        if (!mapMarker) {
-                            mapMarker = marker([
-                                this.currentDatapoint.latitude, 
-                                this.currentDatapoint.longitude
-                            ], { icon: this.currentIcon }).addTo(myMap);
+                        if (this.isParked) {
+                            resolve()
+                            return
                         }
 
-                        mapMarker.setIcon(this.currentIcon)
-
-                        mapMarker.setLatLng([
+                        let latLng = [
                             this.currentDatapoint.latitude, 
                             this.currentDatapoint.longitude
-                        ])
+                        ]
+
+                        this.setMapMarker(latLng)
+
+                        let markerInitiallyOnScreen = myMap.getBounds().contains(
+                            mapMarker.getLatLng()
+                        )
+
+                        let markerNowOffScreen = !myMap.getBounds().contains(
+                            latLng
+                        )
+
+                        mapMarker.setLatLng(latLng)
+
+                        if (markerInitiallyOnScreen && markerNowOffScreen) {
+                            myMap.panTo(latLng)
+                        }
 
                         resolve()
                     }).catch(reject)
                 })
+            },
+            flyTo(latLng) {
+                myMap.flyTo(latLng, 14)
+            },
+            setMapMarker(latLng) {
+                 if (!mapMarker) {
+                    let opts = { icon: this.currentIcon }
+                    mapMarker = marker(latLng, opts).addTo(myMap);
+                }
+
+                mapMarker.setIcon(this.currentIcon)
             }
         },
         computed: {
@@ -175,11 +224,13 @@
 
                 return westIcon
             },
-            showHeading() {
-                return this.currentDatapoint && this.currentDatapoint.heading
+            currentDatapoint() {
+                return this.datapoints.length !== 0 ?
+                    this.datapoints[this.datapoints.length - 1] :
+                    null
             },
-            showSpeed() {
-                return this.currentDatapoint && this.currentDatapoint.ground_speed
+            isParked() {
+                return this.datapoints.length === 0
             },
             direction() {
                 let heading = this.currentDatapoint.heading

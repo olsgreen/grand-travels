@@ -2,9 +2,20 @@ from flask import Flask, request, render_template
 from app.db import *
 from app.nmea import parse_messages
 from flask import jsonify
+from datetime import datetime, timedelta
 
 def init():
     init_db();
+
+def format_record(record):
+    return {
+        'seen_at': record['created_at'],
+        'latitude': record['latitude'],
+        'longitude': record['longitude'],
+        'ground_speed': record['ground_speed'],
+        'heading': record['heading']
+    }
+
 
 def create_app(test_config=None):
     app = Flask(__name__)
@@ -36,15 +47,21 @@ def create_app(test_config=None):
 
     @app.route("/data/current", methods=['GET'])
     def current_data_point():
-        datapoint = get_last_datapoint()
+        return jsonify(format_record(get_last_datapoint()))
 
-        return jsonify(
-            seen_at=datapoint['created_at'],
-            latitude=datapoint['latitude'],
-            longitude=datapoint['longitude'],
-            ground_speed=datapoint['ground_speed'],
-            heading=datapoint['heading']
-        )
+    @app.route("/data/last_five_minutes", methods=['GET'])
+    def datapoints_since():
+        now = datetime.utcnow()
+        five_minutes = timedelta(minutes=5)
+        datapoints = []
+        five_minutes_ago = (now - five_minutes).strftime('%Y-%m-%d %H:%M:%S')
+        records = get_datapoints_since(five_minutes_ago)
+
+        if records != None:
+            for record in records:
+                datapoints.append(format_record(record))
+
+        return jsonify(datapoints)
 
     @app.teardown_appcontext
     def cleanup(exception):
