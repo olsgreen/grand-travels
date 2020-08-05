@@ -29,9 +29,9 @@ def init_db():
     db.commit()
     click.echo('Initialized the database.')
 
-def insert_data_point(latitude, longitude):
+def insert_data_point(latitude, longitude, heading = None, ground_speed = None):
     db = get_db()
-    db.cursor().execute("INSERT INTO gps_data (`latitude`, `longitude`) VALUES (?, ?)", (latitude, longitude))
+    db.cursor().execute("INSERT INTO gps_data (`latitude`, `longitude`, `heading`, `ground_speed`) VALUES (?, ?, ?, ?)", (latitude, longitude, heading, ground_speed))
     db.commit()
 
 def get_last_datapoint():

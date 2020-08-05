@@ -4,7 +4,7 @@ def parse_messages(str, separator='\n'):
     messages = {}
 
     for index, message in enumerate(raw_messages):
-        parts = message.split(',')
+        parts = message.strip().split(',')
 
         sentance_type = parts[0][1:]
 
@@ -29,6 +29,19 @@ def parse_messages(str, separator='\n'):
                 correction_age = parts[13],
                 correction_station_id = parts[14],
                 checksum = '123',
+            ))
+        elif sentance_type == 'GPVTG':
+            messages[sentance_type].append(GPVTGMessage(
+                message_string = message, 
+                track_made_good_one = parts[1], 
+                track_made_good_one_relativity = parts[2], 
+                track_made_good_two = parts[3], 
+                track_made_good_two_relativity = parts[4], 
+                speed_over_ground_one = parts[5], 
+                speed_over_ground_one_units = parts[6], 
+                speed_over_ground_two = parts[7], 
+                speed_over_ground_two_units = parts[8], 
+                checksum = parts[9]
             ))
         else:
             messages[sentance_type].append(NMEAMessage(message))
@@ -99,3 +112,53 @@ class GPGGAMessage(NMEAMessage):
             longitude['decimal'] = -1 * longitude['decimal']
 
         return { 'latitude': latitude['decimal'], 'longitude': longitude['decimal'] }
+
+class GPVTGMessage(NMEAMessage):
+    def __init__(self, message_string, track_made_good_two, track_made_good_two_relativity,
+        track_made_good_one, track_made_good_one_relativity, speed_over_ground_one, 
+        speed_over_ground_one_units, speed_over_ground_two, speed_over_ground_two_units, 
+        checksum):
+
+        NMEAMessage.__init__(self, message_string)
+
+        self.track_made_good_one = track_made_good_one 
+        self.track_made_good_one_relativity = track_made_good_one_relativity 
+        self.track_made_good_two = track_made_good_two 
+        self.track_made_good_two_relativity = track_made_good_two_relativity 
+        self.speed_over_ground_one = speed_over_ground_one 
+        self.speed_over_ground_one_units = speed_over_ground_one_units
+        self.speed_over_ground_two = speed_over_ground_two 
+        self.speed_over_ground_two_units = speed_over_ground_two_units
+        self.checksum = checksum
+
+    def get_knots_per_hour(self):
+        if self.speed_over_ground_one_units == 'N':
+            return self.speed_over_ground_one
+        elif self.speed_over_ground_two_units == 'N':
+            return self.speed_over_ground_two
+
+        return None
+
+    def get_kilometers_per_hour(self):
+        if self.speed_over_ground_one_units == 'K':
+            return self.speed_over_ground_one
+        elif self.speed_over_ground_two_units == 'K':
+            return self.speed_over_ground_two
+
+        return None
+
+    def get_magnetic_heading(self):
+        if self.track_made_good_one_relativity == 'M':
+            return self.track_made_good_one
+        elif self.track_made_good_two_relativity == 'M':
+            return self.track_made_good_two
+
+        return None
+
+    def get_true_heading(self):
+        if self.track_made_good_one_relativity == 'T':
+            return self.track_made_good_one
+        elif self.track_made_good_two_relativity == 'T':
+            return self.track_made_good_two
+
+        return None

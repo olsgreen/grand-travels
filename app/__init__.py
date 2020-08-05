@@ -21,7 +21,15 @@ def create_app(test_config=None):
 
         if 'GPGGA' in messages:
             latLon = messages['GPGGA'][0].get_decimal_lat_lng()
-            insert_data_point(latLon['latitude'], latLon['longitude'])
+            args = [latLon['latitude'],latLon['longitude']]
+
+            if 'GPVTG' in messages:
+                gpvtg = messages['GPVTG'][0]
+                args.append(gpvtg.get_true_heading())
+                args.append(gpvtg.get_kilometers_per_hour())
+            
+            insert_data_point(*args)
+
             return "Datapoint inserted!" 
         else:
             return "No GPGGA message found."
@@ -33,7 +41,9 @@ def create_app(test_config=None):
         return jsonify(
             seen_at=datapoint['created_at'],
             latitude=datapoint['latitude'],
-            longitude=datapoint['longitude'] 
+            longitude=datapoint['longitude'],
+            ground_speed=datapoint['ground_speed'],
+            heading=datapoint['heading']
         )
 
     @app.teardown_appcontext
@@ -41,6 +51,3 @@ def create_app(test_config=None):
         close_connection(exception)
 
     return app
-
-#if __name__ == '__main__':
-    #app.run(host='0.0.0.0')
