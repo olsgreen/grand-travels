@@ -36,7 +36,7 @@ def insert_data_point(latitude, longitude, heading = None, ground_speed = None):
 
 def get_last_datapoint():
     db = get_db()
-    cur = db.execute("SELECT * FROM gps_data ORDER BY id DESC LIMIT 1,1")
+    cur = db.execute("SELECT * FROM gps_data ORDER BY id DESC LIMIT 0,1")
     rv = cur.fetchall()
     cur.close()
     return rv[0] if rv else None
