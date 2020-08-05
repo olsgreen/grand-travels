@@ -89,7 +89,7 @@
 <script>
     import axios from 'axios'
     import 'leaflet/dist/leaflet.css'
-    import { map, tileLayer, marker, icon } from 'leaflet'
+    import { map, tileLayer, marker, icon, latLngBounds } from 'leaflet'
 
     let myMap
     let watcher
@@ -230,7 +230,21 @@
                     null
             },
             isParked() {
-                return this.datapoints.length === 0
+                if (this.datapoints.length < 2)
+                    return true
+
+                let bounds = latLngBounds(
+                    [this.datapoints[0].latitude, this.datapoints[0].longitude],
+                    [this.datapoints[1].latitude, this.datapoints[1].longitude]
+                )
+                
+                for (let i in this.datapoints) {
+                    bounds.extend([this.datapoints[i].latitude, this.datapoints[i].longitude])
+                }
+
+                let distance = myMap.distance(bounds.getNorthWest(), bounds.getSouthEast())
+
+                return distance < 10;
             },
             direction() {
                 let heading = this.currentDatapoint.heading
